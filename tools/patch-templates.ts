@@ -45,6 +45,8 @@ export const TEMPLATE_TARGETS: readonly TemplateTarget[] = [
 		// A later upstream build assembles the same line from the keybinding table.
 		alts: [
 			'`${ut("tui.select.confirm")}/${we("space")} to change \\xB7 ${i}Type to search \\xB7 ${ut("tui.select.cancel")} to cancel`',
+			// v18.8: 键位渲染函数再次改名（bt/De），hint 改存 this.#l.hint。
+			'`${bt("tui.select.confirm")}/${De("space")} to change \\xB7 ${e}Type to search \\xB7 ${bt("tui.select.cancel")} to cancel`',
 		],
 	},
 	{
@@ -52,6 +54,7 @@ export const TEMPLATE_TARGETS: readonly TemplateTarget[] = [
 		anchor: "`Enter/Space to change \\xB7 ${this.#a?",
 		// The same refactor renders the tab section from keybindings too.
 		alts: [
+			"`${e}/${De(\"space\")} to change \\xB7 ${o} \\xB7 Type to search \\xB7 ${t} to close`",
 			"`${e}/${we(\"space\")} to change \\xB7 ${o} \\xB7 Type to search \\xB7 ${t} to close`",
 		],
 	},

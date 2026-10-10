@@ -778,15 +778,20 @@ const ANCHOR_PATCHES: readonly AnchorPatch[] = [
 	{ name: "help example: fuzzy model", find: '`# Use different model (fuzzy matching)\n  ${$e} --model opus "Help me refactor this code"`', replace: `${FN_FRAG}(\`# Use different model (fuzzy matching)\n  \${$e} --model opus "Help me refactor this code"\`)` },
 	{ name: "help example: limit models", find: "`# Limit model cycling to specific models\n  ${$e} --models claude-sonnet,claude-haiku,gpt-4o`", replace: `${FN_FRAG}(\`# Limit model cycling to specific models\n  \${$e} --models claude-sonnet,claude-haiku,gpt-4o\`)` },
 	{ name: "help example: export html", find: "`# Export a session file to HTML\n  ${$e} --export ~/.omp/agent/sessions/--path--/session.jsonl`", replace: `${FN_FRAG}(\`# Export a session file to HTML\n  \${$e} --export ~/.omp/agent/sessions/--path--/session.jsonl\`)` },
+	// v18.8 新增的 goal 模式示例。
+	{ name: "help example: goal mode", find: '`# Start working on a goal immediately\n  ${$e} --goal "Investigate the importer"`', replace: `${FN_FRAG}(\`# Start working on a goal immediately\n  \${$e} --goal "Investigate the importer"\`)` },
 	// CLI flag description composed via template interpolation (`--thinking`).
 	{ name: "thinking flag description", find: "`Set thinking level: ${S5.join(\", \")}`", replace: `${FN_FRAG}(\`Set thinking level: \${S5.join(\", \")}\`)` },
 	// Runtime error/support messages composed via template interpolation.
 	{ name: "cli missing-arg error", find: "`Missing required argument: ${c}`", replace: `${FN_FRAG}(\`Missing required argument: \${c}\`)` },
-				{ name: "usage no-credentials", find: "`No credentials found${u}. Run \\`omp\\` and use /login to add accounts.\n`", replace: `${FN_FRAG}(\`No credentials found\${u}. Run \\\`omp\\\` and use /login to add accounts.\n\`)` },
-	{ name: "usage no-data", find: "`No usage data${u}. Stored credentials are for providers without a usage endpoint.\n`", replace: `${FN_FRAG}(\`No usage data\${u}. Stored credentials are for providers without a usage endpoint.\n\`)` },
+	// v18.8: usage 报表消息从模板改为拼接（`${u}` 插值消失），按新拼写补 alts。
+	{ name: "usage no-credentials", find: "`No credentials found${u}. Run \\`omp\\` and use /login to add accounts.\n`", replace: `${FN_FRAG}(\`No credentials found\${u}. Run \\\`omp\\\` and use /login to add accounts.\n\`)`,
+	  alts: [{ find: "c=\"No credentials found. Run `omp` and use /login to add accounts.\\n\"", replace: "c=__omp_i18n_f(\"No credentials found. Run `omp` and use /login to add accounts.\\n\")" }] },
+	{ name: "usage no-data", find: "`No usage data${u}. Stored credentials are for providers without a usage endpoint.\n`", replace: `${FN_FRAG}(\`No usage data\${u}. Stored credentials are for providers without a usage endpoint.\n\`)`,
+	  alts: [{ find: "c=`No usage data. Stored credentials are for providers without a usage endpoint.\n`;", replace: `c=${FN_FRAG}(\`No usage data. Stored credentials are for providers without a usage endpoint.\n\`);` }] },
 	{ name: "plugin install hint", find: "`\nInstall plugins with: ${$e} plugin install <package>`", replace: `${FN_FRAG}(\`\nInstall plugins with: \${$e} plugin install <package>\`)` },
-							{ name: "subcommand help hint", find: "`\nRun \\`${t} ${i.name} --help\\` for details.\n`", replace: `${FN_FRAG}(\`\nRun \\\`\${t} \${i.name} --help\\\` for details.\n\`)` },
-		{ name: "subcommand usage header", find: "`USAGE\n  ${A0s(t,i.name,a)}\n`", replace: `${FN_BLOCK}(\`USAGE\n  \${A0s(t,i.name,a)}\n\`)` },
+	{ name: "subcommand help hint", find: "`\nRun \\`${t} ${i.name} --help\\` for details.\n`", replace: `${FN_FRAG}(\`\nRun \\\`\${t} \${i.name} --help\\\` for details.\n\`)` },
+	{ name: "subcommand usage header", find: "`USAGE\n  ${A0s(t,i.name,a)}\n`", replace: `${FN_BLOCK}(\`USAGE\n  \${A0s(t,i.name,a)}\n\`)` },
 		// Autocomplete dropdown descriptions: run through the fragment translator so
 		// dynamic labels like "Force: 12 active tools" resolve per-piece.
 				// Slash-menu / status / update-notification dynamic copy: wrap each
@@ -854,7 +859,9 @@ const ANCHOR_PATCHES: readonly AnchorPatch[] = [
 		// the joined result in the fragment translator so each action phrase resolves.
 												// Keyboard Shortcuts panel: wrap the built markdown in the fragment translator
 		// so each action phrase in the table resolves through the dictionary.
-		{ name: "keyboard shortcuts panel", find: "M8(this.ctx,\"Keyboard Shortcuts\",e)", replace: `M8(this.ctx,${FN}(\"Keyboard Shortcuts\"),${FN_FRAG}(e))` },
+	{ name: "keyboard shortcuts panel", find: "M8(this.ctx,\"Keyboard Shortcuts\",e)", replace: `M8(this.ctx,${FN}(\"Keyboard Shortcuts\"),${FN_FRAG}(e))`,
+	  // v18.8: 面板打开调用改为 this.#o(title, content)，内容构建函数改名 nen。
+	  alts: [{ find: "this.#o(\"Keyboard Shortcuts\",nen(e))", replace: `this.#o(${FN}(\"Keyboard Shortcuts\"),${FN_FRAG}(nen(e)))` }] },
 
 	{ name: "settings panel title", find: 'oi(e,"Settings")', replace: `oi(e,${FN}("Settings"))` },
 	{ name: "btw history title", find: 'oi(e,"BTW history")', replace: `oi(e,${FN}("BTW history"))` },
@@ -865,10 +872,17 @@ const ANCHOR_PATCHES: readonly AnchorPatch[] = [
 	// string (full-string lookup can never match a dynamic suffix).
 	{ name: "agent hub header (dot-id)", find: "`Agent Hub \\xB7 ${r.id}`", replace: `${FN_FRAG}(\`Agent Hub \\xB7 \${r.id}\`)` },
 	{ name: "agent hub header (agentId)", find: "`Agent Hub ${b.sep.dot} ${this.deps.agentId}`", replace: `${FN_FRAG}(\`Agent Hub \${b.sep.dot} \${this.deps.agentId}\`)` },
-	{ name: "recent logs title", find: 'oi(this.#l,"Recent Logs")', replace: `oi(this.#l,${FN}("Recent Logs"))` },
+	{ name: "recent logs title", find: 'oi(this.#l,"Recent Logs")', replace: `oi(this.#l,${FN}("Recent Logs"))`,
+	  // v18.8: 标题改传 `new yot({title:...})` 构造参数。
+	  alts: [{ find: 'new yot({title:"Recent Logs"', replace: `new yot({title:${FN}("Recent Logs")` }] },
 	{ name: "move-to-directory title", find: 'oi(t,"Move to directory")', replace: `oi(t,${FN}("Move to directory"))` },
-	{ name: "raw provider stream title", find: 'oi(this.#u,"Raw Provider Stream")', replace: `oi(this.#u,${FN}("Raw Provider Stream"))` },
-	{ name: "extension control center title", find: 'oi(e,"Extension Control Center")', replace: `oi(e,${FN}("Extension Control Center"))` },
+	{ name: "raw provider stream title", find: 'oi(this.#u,"Raw Provider Stream")', replace: `oi(this.#u,${FN}("Raw Provider Stream"))`,
+	  // v18.8: 标题改传 `new yot({title:...})` 构造参数。
+	  alts: [{ find: 'new yot({title:"Raw Provider Stream"', replace: `new yot({title:${FN}("Raw Provider Stream")` }] },
+	// v18.8: 标题提取为模块级常量 jsn，三处消费（Rc({title:jsn})、
+	// Ac(e,jsn)、le(jsn,{role})）。在定义点包一次即可全部生效。
+	{ name: "extension control center title", find: 'oi(e,"Extension Control Center")', replace: `oi(e,${FN}("Extension Control Center"))`,
+	  alts: [{ find: 'var jsn="Extension Control Center"', replace: `var jsn=${FN}("Extension Control Center")` }] },
 	// Table headers drawn by `QM` (bordered table chrome).
 	// Table/sidebar titles: upstream moved these from a helper call
 	// (`ev(e,"Models",s)`) to a constructor argument
@@ -879,19 +893,33 @@ const ANCHOR_PATCHES: readonly AnchorPatch[] = [
 	{ name: "models table title", find: 'new UPe("Models",', replace: `new UPe(${FN}("Models"),` },
 	{ name: "agents table title", find: 'new UPe("Agents",', replace: `new UPe(${FN}("Agents"),` },
 	// Panel titles passed to `OverlayPanel` via `super(...)`.
-	{ name: "queue mode title", find: 'super("Queue Mode")', replace: `super(${FN}("Queue Mode"))` },
-	{ name: "show images title", find: 'super("Show Images")', replace: `super(${FN}("Show Images"))` },
+	// v18.8: super() 第二参数新增 role id（omp.overlay.*），按新形态补 alts。
+	{ name: "queue mode title", find: 'super("Queue Mode")', replace: `super(${FN}("Queue Mode"))`,
+	  alts: [{ find: 'super("Queue Mode","omp.overlay.queue-mode")', replace: `super(${FN}("Queue Mode"),"omp.overlay.queue-mode")` }] },
+	{ name: "show images title", find: 'super("Show Images")', replace: `super(${FN}("Show Images"))`,
+	  alts: [{ find: 'super("Show Images","omp.overlay.show-images")', replace: `super(${FN}("Show Images"),"omp.overlay.show-images")` }] },
 	{ name: "debug tools title", find: 'super("Debug Tools")', replace: `super(${FN}("Debug Tools"))` },
-	{ name: "history title", find: 'super("History")', replace: `super(${FN}("History"))` },
-	{ name: "theme selector title", find: 'super("Theme")', replace: `super(${FN}("Theme"))` },
-	{ name: "add mcp server title", find: 'super("Add MCP Server")', replace: `super(${FN}("Add MCP Server"))` },
-	{ name: "spend rate-limit reset title", find: 'super("Spend a saved rate-limit reset")', replace: `super(${FN}("Spend a saved rate-limit reset"))` },
+	{ name: "history title", find: 'super("History")', replace: `super(${FN}("History"))`,
+	  alts: [{ find: 'super("History","omp.overlay.history")', replace: `super(${FN}("History"),"omp.overlay.history")` }] },
+	{ name: "theme selector title", find: 'super("Theme")', replace: `super(${FN}("Theme"))`,
+	  alts: [{ find: 'super("Theme","omp.overlay.theme")', replace: `super(${FN}("Theme"),"omp.overlay.theme")` }] },
+	{ name: "add mcp server title", find: 'super("Add MCP Server")', replace: `super(${FN}("Add MCP Server"))`,
+	  alts: [{ find: 'super("Add MCP Server","omp.overlay.mcpAdd")', replace: `super(${FN}("Add MCP Server"),"omp.overlay.mcpAdd")` }] },
+	{ name: "spend rate-limit reset title", find: 'super("Spend a saved rate-limit reset")', replace: `super(${FN}("Spend a saved rate-limit reset"))`,
+	  alts: [{ find: 'super("Spend a saved rate-limit reset","omp.overlay.reset-usage")', replace: `super(${FN}("Spend a saved rate-limit reset"),"omp.overlay.reset-usage")` }] },
 	// both plugin panels build their sidebar label the same way and share
 	// the `super("Plugins")` border title
 	{ name: "plugins tab label", find: "label:`${b.icon.package} Plugins`", replace: `label:\`\${b.icon.package} \${${FN}("Plugins")}\``, all: true },
-	{ name: "plugins panel title", find: 'super("Plugins")', replace: `super(${FN}("Plugins"))`, all: true },
+	{ name: "plugins panel title", find: 'super("Plugins")', replace: `super(${FN}("Plugins"))`, all: true,
+	  // v18.8: 两个插件面板的 super 第二参数分叉（role id 与 图标常量 a9e），各补一条 alt。
+	  alts: [
+	    { find: 'super("Plugins","omp.overlay.plugins")', replace: `super(${FN}("Plugins"),"omp.overlay.plugins")` },
+	    { find: 'super("Plugins",a9e)', replace: `super(${FN}("Plugins"),a9e)` },
+	  ] },
 	// Providers settings page: a tab-bar section label, not the sidebar entry
-	{ name: "providers section label", find: 'new $E("Providers",', replace: `new $E(${FN}("Providers"),` },
+	{ name: "providers section label", find: 'new $E("Providers",', replace: `new $E(${FN}("Providers"),`,
+	  // v18.8: Providers 改为 settings tab 映射的 label 属性。
+	  alts: [{ find: 'providers:{label:"Providers",icon:"tab.providers"}', replace: `providers:{label:${FN}("Providers"),icon:"tab.providers"}` }] },
 	// Compact settings row value cell: the raw value is printed as-is
 	// (`true`/`false`/`auto`/`global`/...). Submenu rows (v18 routes every
 	// enum/number/string setting that owns an option list here) get a
