@@ -847,7 +847,10 @@ const ANCHOR_PATCHES: readonly AnchorPatch[] = [
 		  ] },
 		// showError root renderer: same sink approach as status/warning.
 		{ name: "error sink", find: "showError(e){let t=new re(`Error: ${e}`,1,0)", replace: `showError(e){e=${FN_FRAG}(e);let t=new re(\`Error: \${e}\`,1,0)` },
-{ name: "status sink", find: "showStatus(e,t){let s=this.ctx.chatContainer.children", replace: `showStatus(e,t){e=${FN_FRAG}(e);let s=this.ctx.chatContainer.children` },
+{ name: "status sink", find: "showStatus(e,t){let s=this.ctx.chatContainer.children", replace: `showStatus(e,t){e=${FN_FRAG}(e);let s=this.ctx.chatContainer.children`,
+		  // v18.9: 局部变量 s→n 后首选精确失配，而短锚点的通配兜底会命中 320 个方法（不唯一）。
+		  // 加一条当前拼写（含后续判别式）作为 alt，精确匹配优先命中；旧版本仍走首选。
+		  alts: [{ find: 'showStatus(e,t){let n=this.ctx.chatContainer.children,s=n.length>0?n[n.length-1]:void 0,i={styleFn:t?.dim??!0?(l)=>S.fg("dim",l):void 0,toast:t?.toast}', replace: `showStatus(e,t){e=${FN_FRAG}(e);let n=this.ctx.chatContainer.children,s=n.length>0?n[n.length-1]:void 0,i={styleFn:t?.dim??!0?(l)=>S.fg("dim",l):void 0,toast:t?.toast}` }] },
 		{ name: "warning sink", find: "showWarning(e,t){let s=new re(`Warning: ${e}`,1,0)", replace: `showWarning(e,t){e=${FN_FRAG}(e);let s=new re(\`Warning: \${e}\`,1,0)` },
 { name: "agent hub tabs", find: "`${e(\"agents\",\"1 Agents\")}${b.fg(\"dim\",b.sep.dot)}${e(\"activity\",\"2 Activity\")}`", replace: ` ${FN_FRAG}(\`\${e(\"agents\",\"1 Agents\")}\${b.fg(\"dim\",b.sep.dot)}\${e(\"activity\",\"2 Activity\")}\`)` },
 { name: "settings hint bar", find: "c.push(hs(b.fg(\"dim\",this.#y()),e))", replace: `c.push(hs(b.fg(\"dim\",${FN_FRAG}(this.#y())),e))` },
