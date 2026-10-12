@@ -1007,6 +1007,17 @@ const ANCHOR_PATCHES: readonly AnchorPatch[] = [
 	{ name: "keyboard shortcuts panel", find: "M8(this.ctx,\"Keyboard Shortcuts\",e)", replace: `M8(this.ctx,${FN}(\"Keyboard Shortcuts\"),${FN_FRAG}(e))`,
 	  // v18.8: 面板打开调用改为 this.#o(title, content)，内容构建函数改名 nen。
 	  alts: [{ find: "this.#o(\"Keyboard Shortcuts\",nen(e))", replace: `this.#o(${FN}(\"Keyboard Shortcuts\"),${FN_FRAG}(nen(e)))` }] },
+	// `/hotkeys` panels: their table headers are short tokens ("Key"/"Keys",
+	// "Action"), below the fragment translator's length floor, so they must be
+	// wrapped at the definition site. Two panel classes carry their own copy of
+	// the same table, so both spellings are anchored.
+	{ name: "hotkeys table headers", find: 'cols:[{id:"keys",head:"Key"},{id:"action",head:"Action",grow:1}]', replace: `cols:[{id:"keys",head:${FN}("Key")},{id:"action",head:${FN}("Action"),grow:1}]` },
+	{ name: "hotkeys table headers (alt ids)", find: 'cols:[{id:"keys",head:"Keys"},{id:"does",head:"Action",grow:1}]', replace: `cols:[{id:"keys",head:${FN}("Keys")},{id:"does",head:${FN}("Action"),grow:1}]` },
+	// One hotkeys row builds its action from a keybinding lookup, so the rendered
+	// text ("… (↑ when empty)") never exists as a literal and the dictionary —
+	// which stores the source spelling with the word "Up" — cannot match it.
+	// Wrap the template so the finished string resolves through the dictionary.
+	{ name: "hotkeys browse-history action", find: 'action:`Move cursor / browse history (${Ne("up")} when empty)`', replace: `action:${FN_FRAG}(\`Move cursor / browse history (\${Ne("up")} when empty)\`)` },
 
 	{ name: "settings panel title", find: 'oi(e,"Settings")', replace: `oi(e,${FN}("Settings"))` },
 	{ name: "btw history title", find: 'oi(e,"BTW history")', replace: `oi(e,${FN}("BTW history"))` },
