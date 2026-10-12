@@ -305,8 +305,19 @@ if (k === __omp_i18n_t("__proto__") || ...) continue;  // 恒为 false，防护�
    纯格式 diff（真实改动只有 16 条）；写入器统一为 `localeCompare` + 1 空格缩进，
    与既有文件字节一致。
 
-验证：`check` 0 缺口 0 锚点失配；`apply`/`verify` 全部不变量成立；
-PTY 实机抓取欢迎页与设置页，tips、页脚、设置项均为中文，且英文句子未被 fragment 误伤。
+5. **`/hotkeys` 面板**
+   两个渲染路径都漏了。markdown 路径拼出 `| Key | Action |` 与 `| <键> | <动作> |`，
+   整串走 fragment 翻译，但表头是短 token（低于 fragment 长度下限）替换不到 ——
+   改为词条覆盖表头/分隔行 + 锚点包裹两个面板类的 `cols` head。
+   另有一行动作由键位查表拼成（源码 `(${Ne("up")} when empty)`，渲染为
+   `（↑ when empty）`）：词条存的是源码拼写（`Up`），永远匹配不上渲染结果，
+   加锚点把该模板包进 fragment 翻译并按渲染文本补词条。
+
+验证：18.10.1 与 18.10.2 产物均 **65/65 锚点、0 缺口**；`apply`/`verify` 全部不变量成立；
+PTY 实机抓取欢迎页、设置页、`/hotkeys` 面板，tips、页脚、设置项、表头均为中文，
+且英文句子未被 fragment 误伤（`Ask the user to change the setting themselves.` 原样返回）。
+`/hotkeys` 之外还顺带确认了启动器自愈：验证期间官方 omp 自动升到 18.10.2，
+`omp-zh` 无需手工干预即跟随到新版本的侧载运行时。
 
 ### 补译流程修复：静默丢批、静默成功、无效词条
 
