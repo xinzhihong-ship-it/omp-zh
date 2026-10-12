@@ -13,11 +13,13 @@
 ├── omp-zh.sh                     一键入口：apply / restore / verify / report / status
 ├── patch.ts                      补丁器（AST 分类 + 词典替换 + 锚点自动适配 + 校验）
 ├── dict.json                     2129 条英→中映射（源自 oh-my-pi-cn 汉化分支）
-├── dict-extra.json               2700 条补充映射
+├── dict-extra.json               1200+ 条补充映射（含「保持英文」的显式标记）
 ├── analysis/                     侦察与词典构建脚本
 └── tools/                        审计、实测、回退验证脚本
     ├── loose-anchor.ts           锚点通配匹配（重打包重命名自动适配）
-    └── patch-templates.ts        模板字面量包裹（拼接式提示）
+    ├── patch-templates.ts        模板字面量包裹（拼接式提示）
+    ├── anchor-check.ts           全量锚点体检（一次列出所有失配 + 产物真实上下文）
+    └── scan-multiline-strings.ts 多行字符串语料扫描（欢迎页提示等整块文本）
 
 备份位于 <omp>/dist/.omp-zh-backup/（跟着安装走，多份 clone 共享）
 bin/、runtime/ 为本地生成物（启动器与侧载运行时），不入库
@@ -38,6 +40,11 @@ bin/、runtime/ 为本地生成物（启动器与侧载运行时），不入库
 补丁器会自动把启动器软链到 `~/.local/bin/omp-zh`（已存在则不覆盖），所以新开终端后直接敲 `omp-zh` 即可，无需手改 shell 配置。
 启动器内部用绝对路径调用 `bun`，不依赖 `~/.bun/bin` 是否在 PATH 中。
 若 `~/.local/bin` 也不在你的 PATH 中，会打印一行 `export PATH=...` 提示，或改用 `~/.omp-zh/bin/omp-zh` 绝对路径。
+
+启动器在**运行时**解析要跑哪个侧载版本：先取官方 `omp --version`，命中就用该版本的侧载运行时；
+官方刚升级、对应侧载还没打补丁时，退回到最新的已汉化侧载并在 stderr 提示重跑 `apply`。
+因此官方 omp 升级后 `omp-zh` 不会继续跑旧版本（早期版本把版本号写死在启动器里，会出现
+「官方 18.10.1、omp-zh 还停在 18.10.0」）。
 
 > 不确定该敲哪个命令？`./omp-zh.sh status` 最后一行会写明「启动方式」。
 
@@ -184,6 +191,9 @@ bun tools/translate.ts --endpoint https://api.openai.com/v1   # 换端点
 报错提示你配置
 ```
 
+模型解析顺序：`--model` / `OMP_ZH_MODEL` → `~/.omp/agent/models.yml` 里的第一个模型 id。
+未显式指定时不再回落到写死的别名，避免换机器后每个批次都 404。
+
 自动质量保障（无需人工）：
 
 1. **结构校验（硬门禁）**：占位符 `${x}`、数字形态不一致 → **拒绝并入**（词典里没有该键，界面保持原文，不会出错）
@@ -256,6 +266,47 @@ if (k === __omp_i18n_t("__proto__") || ...) continue;  // 恒为 false，防护�
 `verify` 断言这两类键永不出现在调用点。
 
 ## 更新日志
+
+### 适配 omp 18.10.x：启动器版本漂移、欢迎页提示、设置页脚、词典缺口
+
+面向 omp **18.10.1** 的一轮修复，四类问题都表现为「界面仍是英文」：
+
+1. **启动器把版本号写死**（最影响使用）
+   预编译二进制安装靠 `~/.omp-zh/bin/omp-zh` 启动侧载运行时，而旧启动器把
+   `runtime/<版本>/…/cli.js` 的绝对路径写死在文件里。官方 omp 原地升级到 18.10.1 后，
+   侧载目录要等下一次 `apply` 才出现，于是 `omp-zh` 一直跑旧版本（表现为「官方 18.10.1、
+   omp-zh 还停在 18.10.0」）。现在启动器在**运行时**解析：先取官方 `omp --version`，
+   命中就用对应侧载；没有该版本的已汉化侧载时，回退到最新的已汉化侧载并在 stderr
+   提示重跑 `apply`。嵌入脚本同时改为 POSIX 可移植写法（`awk` 比较版本、
+   `grep -oE` 提取），不再依赖 BSD `sort -V` 与 `sed` 的反向引用。
+
+2. **欢迎页提示（tips）整块未汉化**
+   `findBlocks` 只认「无插值的模板字面量」，而上游把 34 行 tips 语料放在一个普通字符串
+   常量里，因此整块被漏掉：字面量扫描只看到一个 3.5KB 的键（任何词条都匹配不上），
+   块改写器又看不到它。现在两类字面量都识别。同时 `Tip: ` 前缀是独立键、且同文本
+   还出现在 `startsWith` 判断里，被禁用规则整条拦下 —— 改为把 `Tip: ${…}` 模板
+   纳入 `TEMPLATE_TARGETS`，整行走 fragment 翻译，判断式不受影响。
+
+3. **设置页脚与短标签**
+   `to change` 这类片段若作为全局 fragment 键，会把
+   `Ask the user to change the setting themselves.` 之类的句子改成中英混排；
+   实测确认后改为**带中点的窄键**（` to change ·`），只可能命中按键提示行。
+   另有 40 个短标签（`Find`/`Wait`/`Quit`/`Toggle`…）此前被 `schema:toolClass`、
+   `stray(other:…)` 等保守规则整条跳过 —— 逐个用 `patch.ts probe` 审计后，
+   对「同一文本另有身份副本」的键启用既有的 `SPLIT_UI_STRINGS` 拆分机制：
+   只翻译渲染副本，身份副本（`k==="File"`、表头数组、XML 标签）保持英文。
+   `Abort`/`Approve`/`Revise` **不拆分**：`select()` 返回的就是选项 label，
+   调用方拿它做比较，拆开会让批准流程失效。工具类 `label` 也确认只用于渲染
+   （送给模型的是 `name`/`description`/`parameters`），可安全翻译。
+
+4. **词典缺口与噪声**
+   补译 134 条（121 条可翻译缺口 + 13 条 tips 行）+ 40 条短标签，缺口数
+   **164 → 0**。`dict-extra.json` 此前被按 tab 缩进重写，导致 PR 里 6300 行
+   纯格式 diff（真实改动只有 16 条）；写入器统一为 `localeCompare` + 1 空格缩进，
+   与既有文件字节一致。
+
+验证：`check` 0 缺口 0 锚点失配；`apply`/`verify` 全部不变量成立；
+PTY 实机抓取欢迎页与设置页，tips、页脚、设置项均为中文，且英文句子未被 fragment 误伤。
 
 ### 补译流程修复：静默丢批、静默成功、无效词条
 

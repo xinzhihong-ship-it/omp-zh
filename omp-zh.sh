@@ -87,10 +87,20 @@ report)
 	run_patch report
 	;;
 status)
-	echo "omp 版本:      $(timeout 30 "$CLI" --version 2>/dev/null || echo '（无法执行）')"
+	# macOS bash ships no `timeout`, so probe with it only when present:
+	# `timeout 30 …` would exit 127 here and always print 无法执行.
+	probe_version() {
+		if command -v timeout >/dev/null 2>&1; then
+			timeout 30 "$CLI" --version 2>/dev/null
+		else
+			"$CLI" --version 2>/dev/null
+		fi
+	}
+	echo "omp 版本:      $(probe_version || echo '（无法执行）')"
 	echo "产物路径:      $CLI"
 	if grep -q 'var __omp_i18n_d=' "$CLI"; then
-		n=$(grep -o '__omp_i18n_t(' "$CLI" | wc -l)
+		# BSD wc pads its count with spaces; trim so the message reads cleanly.
+		n=$(grep -o '__omp_i18n_t(' "$CLI" | wc -l | tr -d '[:space:]')
 		echo "汉化状态:      已应用（约 $n 处调用点）"
 	else
 		echo "汉化状态:      未应用（官方英文版）"

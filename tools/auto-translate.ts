@@ -42,7 +42,16 @@ const flag = (name: string): string | undefined => {
 };
 const has = (name: string): boolean => args.includes(name);
 
-const MODEL = flag("--model") ?? "cn:deepseek-v4.1-flash";
+/**
+ * Model id used for translation batches. The hard-coded default is only a
+ * fallback: it names a provider alias that exists on the maintainer's gateway
+ * but not necessarily on a contributor's, which turns every batch into a 404
+ * and makes the tool look broken. `--model` / OMP_ZH_MODEL always win, and
+ * `resolveModel()` reads the first model id out of the same `models.yml` the
+ * endpoint comes from.
+ */
+const MODEL_FLAG = flag("--model") ?? process.env.OMP_ZH_MODEL;
+let MODEL = MODEL_FLAG ?? "cn:deepseek-v4.1-flash";
 const GAPS_FILE = flag("--gaps") ?? GAPS_PATH;
 const BATCH = Number(flag("--batch") ?? 20);
 
@@ -78,6 +87,22 @@ const resolveEndpoint = async (): Promise<Endpoint> => {
 		}
 	} catch { /* fall through */ }
 	throw new Error("no endpoint: pass --endpoint <url> or set OMP_ZH_ENDPOINT (and OMP_ZH_API_KEY if needed)");
+};
+
+/**
+ * Pick a model id that the configured endpoint actually serves. Without
+ * `--model`, read the first id from `~/.omp/agent/models.yml` — the same file
+ * `resolveEndpoint` takes its baseUrl from — so the two never disagree. A
+ * user whose gateway has no such model gets a clear message instead of a 404
+ * on every batch.
+ */
+const resolveModel = async (): Promise<void> => {
+	if (MODEL_FLAG) return;
+	try {
+		const yml = await Bun.file(path.join(os.homedir(), ".omp/agent/models.yml")).text();
+		const id = yml.match(/^\s*-\s*id:\s*(\S+)/m)?.[1];
+		if (id) MODEL = id;
+	} catch { /* keep the fallback */ }
 };
 
 // ── glossary / terminology locks ────────────────────────────────────────────
@@ -330,6 +355,7 @@ const run = async (): Promise<void> => {
 	if (!(await Bun.file(GAPS_FILE).exists())) {
 		throw new Error(`gap list missing: ${GAPS_FILE}\nrun: bun tools/extract-gaps.ts --json ${GAPS_FILE}`);
 	}
+	await resolveModel();
 	const gaps = JSON.parse(await Bun.file(GAPS_FILE).text()) as { entries: { key: string; role: string; count: number; snippet: string }[] };
 	const dict = { ...(await Bun.file(DICT_PATH).json()), ...(await Bun.file(DICT_EXTRA_PATH).json()) } as Record<string, string>;
 	// Skip ANSI/control-sequence literals outright: they surface as

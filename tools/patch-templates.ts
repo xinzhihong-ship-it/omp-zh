@@ -58,6 +58,20 @@ export const TEMPLATE_TARGETS: readonly TemplateTarget[] = [
 			"`${e}/${we(\"space\")} to change \\xB7 ${o} \\xB7 Type to search \\xB7 ${t} to close`",
 		],
 	},
+	{
+		name: "welcome tip line",
+		// The welcome tip is built as `Tip: ${text}`; the literal "Tip: " prefix
+		// is a separate dictionary key that the banning rules refuse (the same
+		// text is also the operand of a startsWith check on the finished
+		// string). Wrapping the template runs the whole line — prefix included —
+		// through the fragment translator, so the prefix resolves without
+		// touching the comparison.
+		anchor: "`Tip: ${r}`",
+	},
+	{
+		name: "ask dialog tip line",
+		anchor: "`Tip: ${e.tip}`",
+	},
 ];
 
 export interface WrapOp {

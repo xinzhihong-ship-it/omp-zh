@@ -34,7 +34,11 @@ const flag = (name: string): string | undefined => {
 };
 const has = (name: string): boolean => args.includes(name);
 
-const MODEL = flag("--model") ?? "cn:deepseek-v4.1-flash";
+// Only forwarded when the caller names a model: auto-translate.ts resolves one
+// from ~/.omp/agent/models.yml when `--model` is absent. Passing a hard-coded
+// alias here overrode that and turned every batch into a 404 on any machine
+// whose gateway serves different model ids.
+const MODEL = flag("--model") ?? process.env.OMP_ZH_MODEL;
 // Automatic by default: the tool exists to keep the dictionary current without
 // babysitting. Structural checks (placeholders, digits, term locks) still gate
 // every entry, and dict-candidates.json keeps the full audit trail.
@@ -137,8 +141,11 @@ await Bun.write(GAPS_PATH, JSON.stringify(gaps, null, 2));
 
 // ── 2. translate ────────────────────────────────────────────────────────────
 
-step(2, `自动翻译 + 模型自查（模型：${MODEL}）`);
-const trArgs = ["bun", path.join(WORK, "tools", "auto-translate.ts"), "--gaps", GAPS_PATH, "--model", MODEL];
+step(2, MODEL ? `自动翻译 + 模型自查（模型：${MODEL}）` : "自动翻译 + 模型自查（模型：自动探测）");
+const trArgs = ["bun", path.join(WORK, "tools", "auto-translate.ts"), "--gaps", GAPS_PATH];
+// Forward the model only when the caller supplied one; otherwise let
+// auto-translate.ts resolve it from the endpoint's own config.
+if (MODEL) trArgs.push("--model", MODEL);
 if (has("--endpoint")) trArgs.push("--endpoint", flag("--endpoint") as string);
 if (has("--no-review")) trArgs.push("--no-review");
 const tr = await run(trArgs, { inherit: true });
