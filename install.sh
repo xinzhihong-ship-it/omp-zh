@@ -22,7 +22,16 @@ command -v bun >/dev/null 2>&1 || die "需要 bun（https://bun.sh）——请�
 
 # 拉取或更新补丁仓库。git 不可用时退回 tarball（无法增量更新，但保证能装上）。
 if [[ -d "$DIR/.git" ]]; then
-	git -C "$DIR" pull --ff-only --quiet || die "更新 $DIR 失败，请检查网络；如需强制同步：rm -rf $DIR 后重跑本命令"
+	# Pull the upstream default branch, not whatever branch happens to be
+	# checked out: a user who switched branches while debugging (or who cloned
+	# a fork) has no tracking information, and a bare `git pull` then exits 1
+	# with "There is no tracking information for the current branch" — the
+	# installer would refuse to update even though the remote is reachable.
+	if ! git -C "$DIR" pull --ff-only --quiet origin main; then
+		# Diverged or offline: fall back to a hard sync so the update still lands.
+		git -C "$DIR" fetch --quiet origin main || die "更新 $DIR 失败，请检查网络；如需强制同步：rm -rf $DIR 后重跑本命令"
+		git -C "$DIR" checkout --quiet -B main origin/main || die "同步 $DIR 到 origin/main 失败；如需强制同步：rm -rf $DIR 后重跑本命令"
+	fi
 elif [[ -d "$DIR" && -n "$(ls -A "$DIR" 2>/dev/null)" ]]; then
 	# 目录存在但不是 git 仓库（旧 tarball 安装）：原地覆盖为最新版
 	if command -v git >/dev/null 2>&1; then
